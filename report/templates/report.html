@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ReconChain — Reconnaissance Report: {{ target }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --rc-primary: #0d6efd;
+            --rc-dark: #0b132b;
+            --rc-darker: #060b19;
+            --rc-card: #1c2541;
+            --rc-card-border: #3a506b;
+            --rc-accent: #00f5ff;
+            --rc-critical: #dc3545;
+            --rc-high: #fd7e14;
+            --rc-medium: #ffc107;
+            --rc-low: #20c997;
+            --rc-info: #0dcaf0;
+        }
+        body {
+            background: var(--rc-darker);
+            color: #e0e0e0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .sidebar {
+            background: var(--rc-dark);
+            min-height: 100vh;
+            border-right: 1px solid var(--rc-card-border);
+            padding-top: 1rem;
+        }
+        .sidebar .nav-link {
+            color: #adb5bd;
+            padding: 0.75rem 1.25rem;
+            border-radius: 0.5rem;
+            margin: 0.15rem 0.5rem;
+            transition: all 0.2s;
+        }
+        .sidebar .nav-link:hover, .sidebar .nav-link.active {
+            color: #fff;
+            background: rgba(13, 110, 253, 0.15);
+        }
+        .sidebar .nav-link i {
+            width: 24px;
+            margin-right: 8px;
+        }
+        .main-content {
+            padding: 2rem;
+        }
+        .rc-header {
+            padding: 1.5rem 0;
+            border-bottom: 1px solid var(--rc-card-border);
+            margin-bottom: 2rem;
+        }
+        .rc-header h1 {
+            color: #fff;
+            font-weight: 700;
+        }
+        .rc-header .subtitle {
+            color: var(--rc-accent);
+            font-size: 1.1rem;
+        }
+        .stat-card {
+            background: var(--rc-card);
+            border: 1px solid var(--rc-card-border);
+            border-radius: 1rem;
+            padding: 1.25rem;
+            text-align: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 245, 255, 0.1);
+        }
+        .stat-card .icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+        .stat-card .number {
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: #fff;
+        }
+        .stat-card .label {
+            color: #adb5bd;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .rc-card {
+            background: var(--rc-card);
+            border: 1px solid var(--rc-card-border);
+            border-radius: 1rem;
+            margin-bottom: 1.5rem;
+            overflow: hidden;
+        }
+        .rc-card .card-header {
+            background: rgba(0,0,0,0.2);
+            border-bottom: 1px solid var(--rc-card-border);
+            padding: 1rem 1.25rem;
+            font-weight: 600;
+            color: #fff;
+        }
+        .rc-card .card-header i {
+            margin-right: 0.5rem;
+            color: var(--rc-accent);
+        }
+        .rc-card .card-body {
+            padding: 1.25rem;
+        }
+        .table-custom {
+            color: #e0e0e0;
+            font-size: 0.9rem;
+        }
+        .table-custom thead th {
+            border-bottom: 2px solid var(--rc-card-border);
+            color: var(--rc-accent);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.5px;
+        }
+        .table-custom td, .table-custom th {
+            border-color: var(--rc-card-border);
+            vertical-align: middle;
+        }
+        .table-custom tbody tr:hover {
+            background: rgba(13, 110, 253, 0.05);
+        }
+        .severity-critical { color: var(--rc-critical); font-weight: 600; }
+        .severity-high { color: var(--rc-high); font-weight: 600; }
+        .severity-medium { color: var(--rc-medium); font-weight: 600; }
+        .severity-low { color: var(--rc-low); }
+        .severity-info { color: var(--rc-info); }
+        .badge-critical { background: var(--rc-critical); color: #fff; }
+        .badge-high { background: var(--rc-high); color: #fff; }
+        .badge-medium { background: var(--rc-medium); color: #000; }
+        .badge-low { background: var(--rc-low); color: #000; }
+        .badge-info { background: var(--rc-info); color: #000; }
+        .chart-container {
+            position: relative;
+            height: 250px;
+            width: 100%;
+        }
+        .finding-item {
+            padding: 0.75rem;
+            border-left: 3px solid var(--rc-card-border);
+            margin-bottom: 0.5rem;
+            border-radius: 0.25rem;
+            background: rgba(0,0,0,0.15);
+        }
+        .finding-item.critical { border-left-color: var(--rc-critical); }
+        .finding-item.high { border-left-color: var(--rc-high); }
+        .finding-item.medium { border-left-color: var(--rc-medium); }
+        .finding-item.low { border-left-color: var(--rc-low); }
+        .finding-item.info { border-left-color: var(--rc-info); }
+        .rec-item {
+            padding: 0.6rem 0.75rem;
+            margin-bottom: 0.4rem;
+            border-radius: 0.5rem;
+            background: rgba(0, 245, 255, 0.05);
+            border: 1px solid rgba(0, 245, 255, 0.1);
+        }
+        .rec-item i {
+            color: var(--rc-accent);
+            margin-right: 0.5rem;
+        }
+        .footer-bar {
+            padding: 1.5rem 0;
+            border-top: 1px solid var(--rc-card-border);
+            margin-top: 2rem;
+            color: #6c757d;
+            font-size: 0.85rem;
+            text-align: center;
+        }
+        .timeline-item {
+            display: flex;
+            align-items: center;
+            padding: 0.5rem 0;
+        }
+        .timeline-item .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 12px;
+            background: var(--rc-accent);
+        }
+        .tool-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            background: rgba(13, 110, 253, 0.15);
+            color: var(--rc-accent);
+            font-size: 0.8rem;
+            margin: 0.15rem;
+            border: 1px solid rgba(0, 245, 255, 0.2);
+        }
+        .duration-badge {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--rc-accent);
+        }
+        pre {
+            background: rgba(0,0,0,0.3);
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            border: 1px solid var(--rc-card-border);
+            color: #e0e0e0;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        @media (max-width: 768px) {
+            .sidebar { min-height: auto; }
+            .main-content { padding: 1rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-md-2 sidebar d-none d-md-block">
+            <div class="text-center mb-4 mt-2">
+                <i class="fas fa-shield-halved" style="font-size: 2.5rem; color: var(--rc-accent);"></i>
+                <h6 class="mt-2" style="color: var(--rc-accent); font-weight: 700;">ReconChain</h6>
+            </div>
+            <nav class="nav flex-column">
+                <a class="nav-link active" href="#summary"><i class="fas fa-tachometer-alt"></i>Summary</a>
+                <a class="nav-link" href="#nmap"><i class="fas fa-network-wired"></i>Nmap</a>
+                <a class="nav-link" href="#gobuster"><i class="fas fa-folder-tree"></i>Gobuster</a>
+                <a class="nav-link" href="#nikto"><i class="fas fa-bug"></i>Nikto</a>
+                <a class="nav-link" href="#harvester"><i class="fas fa-search"></i>theHarvester</a>
+                <a class="nav-link" href="#stats"><i class="fas fa-chart-bar"></i>Statistics</a>
+                <a class="nav-link" href="#risk"><i class="fas fa-exclamation-triangle"></i>Risk Summary</a>
+                <a class="nav-link" href="#recs"><i class="fas fa-check-circle"></i>Recommendations</a>
+            </nav>
+        </div>
+
+        <!-- Main Content -->
+        <div class="col-md-10 main-content">
+
+            <!-- Header -->
+            <div class="rc-header">
+                <div class="d-flex justify-content-between align-items-start flex-wrap">
+                    <div>
+                        <h1><i class="fas fa-shield-halved me-2" style="color: var(--rc-accent);"></i>Reconnaissance Report</h1>
+                        <div class="subtitle">{{ target }}</div>
+                    </div>
+                    <div class="text-end">
+                        <div class="duration-badge">{{ "%.0f" % (duration_seconds / 60) }}m {{ duration_seconds % 60 }}s</div>
+                        <small style="color: #adb5bd;">Total Duration</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Executive Summary -->
+            <section id="summary">
+                <div class="rc-card">
+                    <div class="card-header"><i class="fas fa-tachometer-alt"></i>Executive Summary</div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <strong>Target</strong><br>
+                                <span style="color: #fff;">{{ target }}</span>
+                            </div>
+                            <div class="col-md-3">
+                                <strong>Type</strong><br>
+                                <span class="tool-badge">{{ target_type|upper }}</span>
+                            </div>
+                            <div class="col-md-3">
+                                <strong>Scan Date</strong><br>
+                                <span style="color: #fff;">{{ scan_date }}</span>
+                            </div>
+                            <div class="col-md-3">
+                                <strong>Tools Executed</strong><br>
+                                {% for tool in tools_executed %}
+                                <span class="tool-badge">{{ tool }}</span>
+                                {% else %}
+                                <span style="color: #6c757d;">None</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Stat Cards -->
+            <div class="row g-3 mb-4" id="stats-cards">
+                <div class="col-md-2 col-6">
+                    <div class="stat-card">
+                        <div class="icon" style="color: #0d6efd;"><i class="fas fa-door-open"></i></div>
+                        <div class="number">{{ stats.total_open_ports }}</div>
+                        <div class="label">Open Ports</div>
+                    </div>
+                </div>
+                <div class="col-md-2 col-6">
+                    <div class="stat-card">
+                        <div class="icon" style="color: #20c997;"><i class="fas fa-folder-open"></i></div>
+                        <div class="number">{{ stats.total_directories }}</div>
+                        <div class="label">Directories</div>
+                    </div>
+                </div>
+                <div class="col-md-2 col-6">
+                    <div class="stat-card">
+                        <div class="icon" style="color: #dc3545;"><i class="fas fa-bug"></i></div>
+                        <div class="number">{{ stats.total_vulnerabilities }}</div>
+                        <div class="label">Vulnerabilities</div>
+                    </div>
+                </div>
+                <div class="col-md-2 col-6">
+                    <div class="stat-card">
+                        <div class="icon" style="color: #fd7e14;"><i class="fas fa-sitemap"></i></div>
+                        <div class="number">{{ stats.total_subdomains }}</div>
+                        <div class="label">Subdomains</div>
+                    </div>
+                </div>
+                <div class="col-md-2 col-6">
+                    <div class="stat-card">
+                        <div class="icon" style="color: #ffc107;"><i class="fas fa-envelope"></i></div>
+                        <div class="number">{{ stats.total_emails }}</div>
+                        <div class="label">Emails</div>
+                    </div>
+                </div>
+                <div class="col-md-2 col-6">
+                    <div class="stat-card">
+                        <div class="icon" style="color: #0dcaf0;"><i class="fas fa-server"></i></div>
+                        <div class="number">{{ stats.total_hosts }}</div>
+                        <div class="label">Hosts</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Nmap Results -->
+            <section id="nmap">
+                <div class="rc-card">
+                    <div class="card-header"><i class="fas fa-network-wired"></i>Nmap Scan Results</div>
+                    <div class="card-body">
+                        {% if nmap_host_status and nmap_host_status != "Not scanned" %}
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-3">
+                                <strong>Host Status</strong><br>
+                                <span class="badge {% if nmap_host_status == 'up' %}bg-success{% else %}bg-secondary{% endif %}">
+                                    {{ nmap_host_status|upper }}
+                                </span>
+                            </div>
+                            <div class="col-md-3">
+                                <strong>IP Address</strong><br>
+                                <span style="color: #fff;">{{ nmap_ip or 'N/A' }}</span>
+                            </div>
+                            <div class="col-md-3">
+                                <strong>Hostname</strong><br>
+                                <span style="color: #fff;">{{ nmap_hostname or 'N/A' }}</span>
+                            </div>
+                            <div class="col-md-3">
+                                <strong>OS Detection</strong><br>
+                                <span style="color: #fff;">{{ nmap_os or 'Not available (run as root)' }}</span>
+                            </div>
+                        </div>
+
+                        {% if nmap_ports %}
+                        <div class="table-responsive">
+                            <table class="table table-custom">
+                                <thead>
+                                    <tr>
+                                        <th>Port</th>
+                                        <th>Protocol</th>
+                                        <th>State</th>
+                                        <th>Service</th>
+                                        <th>Version</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for port in nmap_ports %}
+                                    <tr>
+                                        <td><strong>{{ port.port }}</strong></td>
+                                        <td>{{ port.protocol }}</td>
+                                        <td>
+                                            {% if port.state == 'open' %}
+                                            <span class="badge bg-success">Open</span>
+                                            {% elif port.state == 'filtered' %}
+                                            <span class="badge bg-warning text-dark">Filtered</span>
+                                            {% else %}
+                                            <span class="badge bg-secondary">{{ port.state }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ port.service }}</td>
+                                        <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis;">{{ port.version or '-' }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="text-center py-4" style="color: #6c757d;">
+                            <i class="fas fa-info-circle me-2"></i>No open ports detected. The host may be down or filtering scan probes.
+                        </div>
+                        {% endif %}
+                        {% else %}
+                        <div class="text-center py-4" style="color: #6c757d;">
+                            <i class="fas fa-hourglass-half me-2"></i>Nmap scan not executed or results not available.
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </section>
+
+            <!-- Gobuster Results -->
+            <section id="gobuster">
+                <div class="rc-card">
+                    <div class="card-header"><i class="fas fa-folder-tree"></i>Gobuster Directory Enumeration</div>
+                    <div class="card-body">
+                        {% if gobuster_directories %}
+                        <div class="table-responsive">
+                            <table class="table table-custom">
+                                <thead>
+                                    <tr>
+                                        <th>URL / Path</th>
+                                        <th>Status</th>
+                                        <th>Size</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for dir in gobuster_directories %}
+                                    <tr>
+                                        <td><code>{{ dir.url }}</code></td>
+                                        <td>
+                                            {% set s = dir.status|int %}
+                                            {% if s >= 200 and s < 300 %}
+                                            <span class="badge bg-success">{{ s }}</span>
+                                            {% elif s >= 300 and s < 400 %}
+                                            <span class="badge bg-primary">{{ s }}</span>
+                                            {% elif s >= 400 and s < 500 %}
+                                            <span class="badge bg-warning text-dark">{{ s }}</span>
+                                            {% elif s >= 500 %}
+                                            <span class="badge bg-danger">{{ s }}</span>
+                                            {% else %}
+                                            <span class="badge bg-secondary">{{ s }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ dir.size or '-' }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="text-center py-4" style="color: #6c757d;">
+                            <i class="fas fa-folder-open me-2"></i>No directories discovered. Gobuster may not have been run, or the wordlist returned no results.
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </section>
+
+            <!-- Nikto Results -->
+            <section id="nikto">
+                <div class="rc-card">
+                    <div class="card-header"><i class="fas fa-bug"></i>Nikto Web Vulnerability Scan</div>
+                    <div class="card-body">
+                        {% if nikto_findings %}
+                        <div class="mb-3">
+                            {% if nikto_server %}
+                            <strong>Server:</strong> <span class="tool-badge">{{ nikto_server }}</span>
+                            {% endif %}
+                            {% if nikto_scan_info %}
+                            <div class="mt-2">
+                                {% for k, v in nikto_scan_info.items() %}
+                                <span class="tool-badge">{{ k }}: {{ v }}</span>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        {% for finding in nikto_findings %}
+                        {% set desc = finding.get('description', '') %}
+                        {% set cls = 'info' %}
+                        {% set sev_label = 'Informational' %}
+                        {% if 'critical' in desc|lower or 'rce' in desc|lower or 'remote code' in desc|lower %}
+                            {% set cls = 'critical' %}
+                            {% set sev_label = 'Critical' %}
+                        {% elif 'sql' in desc|lower or 'xss' in desc|lower or 'command' in desc|lower or 'file include' in desc|lower %}
+                            {% set cls = 'high' %}
+                            {% set sev_label = 'High' %}
+                        {% elif 'misconfig' in desc|lower or 'directory listing' in desc|lower or 'information disclosure' in desc|lower %}
+                            {% set cls = 'medium' %}
+                            {% set sev_label = 'Medium' %}
+                        {% else %}
+                            {% set cls = 'info' %}
+                            {% set sev_label = 'Info' %}
+                        {% endif %}
+                        <div class="finding-item {{ cls }}">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <strong>{{ finding.get('method', '') }}</strong>
+                                    {% if finding.get('uri') %}
+                                    <code>{{ finding.uri }}</code>
+                                    {% endif %}
+                                </div>
+                                <span class="badge bg-{{ 'danger' if cls == 'critical' else 'warning' if cls == 'high' else 'primary' if cls == 'medium' else 'info' }}">
+                                    {{ sev_label }}
+                                </span>
+                            </div>
+                            <div class="mt-1 small">{{ desc }}</div>
+                            {% if finding.get('osvdb') %}
+                            <div class="mt-1"><small>OSVDB: {{ finding.osvdb }}</small></div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                        {% else %}
+                        <div class="text-center py-4" style="color: #6c757d;">
+                            <i class="fas fa-shield me-2"></i>No vulnerabilities found by Nikto, or scan was not executed.
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </section>
+
+            <!-- theHarvester Results -->
+            <section id="harvester">
+                <div class="rc-card">
+                    <div class="card-header"><i class="fas fa-search"></i>theHarvester OSINT Results</div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <h6 style="color: var(--rc-accent);"><i class="fas fa-envelope me-2"></i>Emails ({{ harvester_emails|length }})</h6>
+                                {% if harvester_emails %}
+                                <ul class="list-unstyled">
+                                    {% for email in harvester_emails %}
+                                    <li><code>{{ email }}</code></li>
+                                    {% endfor %}
+                                </ul>
+                                {% else %}
+                                <p style="color: #6c757d;">No emails discovered.</p>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <h6 style="color: var(--rc-accent);"><i class="fas fa-sitemap me-2"></i>Hosts / Subdomains ({{ harvester_hosts|length }})</h6>
+                                {% if harvester_hosts %}
+                                <ul class="list-unstyled">
+                                    {% for host in harvester_hosts %}
+                                    <li>
+                                        <code>{{ host.hostname }}</code>
+                                        {% if host.ip %}
+                                        <small style="color: #6c757d;">({{ host.ip }})</small>
+                                        {% endif %}
+                                    </li>
+                                    {% endfor %}
+                                </ul>
+                                {% else %}
+                                <p style="color: #6c757d;">No hosts discovered.</p>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <h6 style="color: var(--rc-accent);"><i class="fas fa-globe me-2"></i>Subdomains ({{ harvester_subdomains|length }})</h6>
+                                {% if harvester_subdomains %}
+                                <ul class="list-unstyled">
+                                    {% for sub in harvester_subdomains[:30] %}
+                                    <li><code>{{ sub }}</code></li>
+                                    {% endfor %}
+                                    {% if harvester_subdomains|length > 30 %}
+                                    <li><em>... and {{ harvester_subdomains|length - 30 }} more</em></li>
+                                    {% endif %}
+                                </ul>
+                                {% else %}
+                                <p style="color: #6c757d;">No subdomains discovered.</p>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <h6 style="color: var(--rc-accent);"><i class="fas fa-network-wired me-2"></i>IP Addresses ({{ harvester_ips|length }})</h6>
+                                {% if harvester_ips %}
+                                <ul class="list-unstyled">
+                                    {% for ip in harvester_ips %}
+                                    <li><code>{{ ip }}</code></li>
+                                    {% endfor %}
+                                </ul>
+                                {% else %}
+                                <p style="color: #6c757d;">No IPs discovered.</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Charts -->
+            <section id="stats">
+                <div class="rc-card">
+                    <div class="card-header"><i class="fas fa-chart-bar"></i>Statistics &amp; Visualizations</div>
+                    <div class="card-body">
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <h6 style="color: var(--rc-accent); text-align: center;">Vulnerability Severity Distribution</h6>
+                                <div class="chart-container">
+                                    <canvas id="severityChart"></canvas>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <h6 style="color: var(--rc-accent); text-align: center;">Open Ports by Service</h6>
+                                <div class="chart-container">
+                                    <canvas id="servicesChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Risk Summary -->
+            <section id="risk">
+                <div class="rc-card">
+                    <div class="card-header"><i class="fas fa-exclamation-triangle"></i>Risk Summary</div>
+                    <div class="card-body">
+                        <div class="row g-3 text-center">
+                            <div class="col">
+                                <div class="p-3 rounded" style="background: rgba(220,53,69,0.15); border: 1px solid rgba(220,53,69,0.3);">
+                                    <div style="font-size: 2rem; color: #dc3545; font-weight: 700;">{{ stats.risk_counts.critical }}</div>
+                                    <small style="color: #dc3545;">Critical</small>
+                                </div>
+                            </div>
+                            <div class="col">
+                                <div class="p-3 rounded" style="background: rgba(253,126,20,0.15); border: 1px solid rgba(253,126,20,0.3);">
+                                    <div style="font-size: 2rem; color: #fd7e14; font-weight: 700;">{{ stats.risk_counts.high }}</div>
+                                    <small style="color: #fd7e14;">High</small>
+                                </div>
+                            </div>
+                            <div class="col">
+                                <div class="p-3 rounded" style="background: rgba(255,193,7,0.15); border: 1px solid rgba(255,193,7,0.3);">
+                                    <div style="font-size: 2rem; color: #ffc107; font-weight: 700;">{{ stats.risk_counts.medium }}</div>
+                                    <small style="color: #ffc107;">Medium</small>
+                                </div>
+                            </div>
+                            <div class="col">
+                                <div class="p-3 rounded" style="background: rgba(32,201,151,0.15); border: 1px solid rgba(32,201,151,0.3);">
+                                    <div style="font-size: 2rem; color: #20c997; font-weight: 700;">{{ stats.risk_counts.low }}</div>
+                                    <small style="color: #20c997;">Low</small>
+                                </div>
+                            </div>
+                            <div class="col">
+                                <div class="p-3 rounded" style="background: rgba(13,202,240,0.15); border: 1px solid rgba(13,202,240,0.3);">
+                                    <div style="font-size: 2rem; color: #0dcaf0; font-weight: 700;">{{ stats.risk_counts.informational }}</div>
+                                    <small style="color: #0dcaf0;">Info</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Recommendations -->
+            <section id="recs">
+                <div class="rc-card">
+                    <div class="card-header"><i class="fas fa-check-circle"></i>Recommendations</div>
+                    <div class="card-body">
+                        {% if recommendations %}
+                        {% for rec in recommendations %}
+                        <div class="rec-item">
+                            <i class="fas fa-check-circle"></i>
+                            {{ rec }}
+                        </div>
+                        {% endfor %}
+                        {% else %}
+                        <div class="text-center py-4" style="color: #6c757d;">
+                            <i class="fas fa-check-double me-2"></i>No specific recommendations. The target appears well-configured.
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </section>
+
+            <!-- Footer -->
+            <div class="footer-bar">
+                <i class="fas fa-shield-halved me-2"></i>
+                Generated by <strong>ReconChain</strong> on {{ scan_date }}
+                &mdash; Target: {{ target }}
+                &mdash; Duration: {{ "%.0f" % (duration_seconds / 60) }}m {{ duration_seconds % 60 }}s
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js Scripts -->
+<script>
+(function() {
+    // Parse stats data
+    var stats = {{ stats_json|safe }};
+
+    // Severity Chart
+    var ctx1 = document.getElementById('severityChart');
+    if (ctx1) {
+        new Chart(ctx1.getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Critical', 'High', 'Medium', 'Low', 'Info'],
+                datasets: [{
+                    data: [
+                        stats.risk_counts.critical || 0,
+                        stats.risk_counts.high || 0,
+                        stats.risk_counts.medium || 0,
+                        stats.risk_counts.low || 0,
+                        stats.risk_counts.informational || 0
+                    ],
+                    backgroundColor: ['#dc3545', '#fd7e14', '#ffc107', '#20c997', '#0dcaf0'],
+                    borderColor: '#1c2541',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { color: '#adb5bd', padding: 12 }
+                    }
+                }
+            }
+        });
+    }
+
+    // Services Chart
+    var ctx2 = document.getElementById('servicesChart');
+    if (ctx2) {
+        var services = stats.services || {};
+        var labels = Object.keys(services).slice(0, 10);
+        var data = labels.map(function(k) { return services[k]; });
+        var colors = ['#0d6efd', '#20c997', '#fd7e14', '#dc3545', '#ffc107', '#0dcaf0', '#6f42c1', '#d63384', '#198754', '#0d6efd'];
+
+        new Chart(ctx2.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: labels.length ? labels : ['No Data'],
+                datasets: [{
+                    label: 'Port Count',
+                    data: data.length ? data : [0],
+                    backgroundColor: colors.slice(0, labels.length || 1),
+                    borderColor: '#1c2541',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    x: { ticks: { color: '#adb5bd' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                    y: { ticks: { color: '#adb5bd' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+                }
+            }
+        });
+    }
+})();
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
