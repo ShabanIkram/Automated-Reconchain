@@ -49,11 +49,10 @@ class GobusterScanner:
             "-q",               # Quiet mode
             "--no-color",
             "-e",               # Expanded mode (full URLs)
-            "-l",               # Include length of response
         ]
 
-        # Use JSON output if supported
-        cmd.extend(["-j", str(output_json)])
+        # Use JSON output if supported (use --json instead of -j for compatibility)
+        cmd.extend(["--json", str(output_json)])
 
         self.logger.info(f"  Running: gobuster dir -u {url} -w {Path(self.wordlist).name} -t {self.threads}")
 

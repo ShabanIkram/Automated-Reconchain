@@ -6,6 +6,7 @@ and default NSE script scanning.
 
 import subprocess
 import os
+import platform
 from pathlib import Path
 
 
@@ -18,22 +19,41 @@ class NmapScanner:
         self.logger = logger
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
+    def _has_raw_socket_privileges(self) -> bool:
+        """Check if we have privileges for SYN scan (-sS)."""
+        if platform.system() == "Windows":
+            try:
+                import ctypes
+                return ctypes.windll.shell32.IsUserAnAdmin() != 0
+            except Exception:
+                return False
+        else:
+            return os.geteuid() == 0
+
     def scan(self) -> bool:
         """Execute the Nmap scan with service/version/OS detection and default scripts."""
         xml_path = self.output_dir / "nmap.xml"
         normal_path = self.output_dir / "nmap.txt"
 
+        # Use -sT (TCP connect) without root; -sS (SYN) requires root/raw sockets
+        scan_type = "-sS" if self._has_raw_socket_privileges() else "-sT"
+        if scan_type == "-sT":
+            self.logger.info("  [i] Non-root detected — using TCP connect scan (-sT)")
+
         cmd = [
             "nmap",
-            "-sS",            # TCP SYN scan
+            scan_type,        # TCP SYN or connect scan
             "-sV",            # Version detection
-            "-O",             # OS detection
             "-Pn",            # Treat all hosts as online (skip host discovery)
             "--script=default",  # Default NSE scripts
             "-oX", str(xml_path),   # XML output
             "-oN", str(normal_path), # Normal output
             self.target
         ]
+
+        # Only attempt OS detection with root (requires raw sockets)
+        if self._has_raw_socket_privileges():
+            cmd.insert(3, "-O")
 
         self.logger.info(f"  Running: {' '.join(cmd)}")
 

@@ -428,18 +428,27 @@ Examples:
 
     # Run specified phases
     try:
+        phase_status = {}
         for phase in phases:
             if phase == "nmap":
-                rc.run_nmap()
+                phase_status["nmap"] = rc.run_nmap()
             elif phase == "gobuster":
-                rc.run_gobuster()
+                phase_status["gobuster"] = rc.run_gobuster()
             elif phase == "nikto":
-                rc.run_nikto()
+                phase_status["nikto"] = rc.run_nikto()
             elif phase == "harvester":
                 if rc.target_type == "domain":
-                    rc.run_harvester()
+                    phase_status["harvester"] = rc.run_harvester()
                 else:
                     rc.logger.info("  [-] Skipping theHarvester: target is an IP address")
+                    phase_status["harvester"] = False
+
+        # Log phase results
+        for phase_name, status in phase_status.items():
+            if status:
+                rc.logger.info(f"  [✓] {phase_name.upper()} completed successfully")
+            else:
+                rc.logger.warning(f"  [!] {phase_name.upper()} failed or produced no output")
 
         # Parse results and generate report
         rc._parse_results()

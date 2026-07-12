@@ -30,14 +30,12 @@ class NiktoScanner:
         """Run Nikto vulnerability scan and save XML output."""
         target_host = self._get_target()
         xml_path = self.output_dir / "nikto.xml"
-        txt_path = self.output_dir / "nikto.txt"
 
         cmd = [
             "nikto",
             "-h", target_host,
             "-o", str(xml_path),
             "-Format", "xml",
-            "-output", str(txt_path),
         ]
 
         self.logger.info(f"  Running: nikto -h {target_host}")
