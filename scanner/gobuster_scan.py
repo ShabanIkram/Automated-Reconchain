@@ -31,8 +31,6 @@ class GobusterScanner:
         """Run Gobuster directory enumeration."""
         url = self._get_url()
         output_txt = self.output_dir / "gobuster.txt"
-        output_json = self.output_dir / "gobuster.json"
-
         # Check wordlist exists
         if not Path(self.wordlist).exists():
             self.logger.warning(f"  [!] Wordlist not found: {self.wordlist}")
@@ -46,13 +44,10 @@ class GobusterScanner:
             "-w", self.wordlist,
             "-t", str(self.threads),
             "-o", str(output_txt),
-            "-q",               # Quiet mode
+            "-q",
             "--no-color",
-            "-e",               # Expanded mode (full URLs)
+            "-e",
         ]
-
-        # Use JSON output if supported (use --json instead of -j for compatibility)
-        cmd.extend(["--json", str(output_json)])
 
         self.logger.info(f"  Running: gobuster dir -u {url} -w {Path(self.wordlist).name} -t {self.threads}")
 
@@ -75,8 +70,12 @@ class GobusterScanner:
                 return True
             else:
                 self.logger.warning(f"  [!] Gobuster returned exit code {result.returncode}")
-                if "error" in result.stderr.lower():
-                    self.logger.warning(f"      {result.stderr.strip()}")
+                stderr_out = result.stderr.strip()
+                if stderr_out:
+                    self.logger.warning(f"      stderr: {stderr_out[:300]}")
+                stdout_out = result.stdout.strip()
+                if stdout_out:
+                    self.logger.warning(f"      stdout: {stdout_out[:300]}")
                 return False
 
         except subprocess.TimeoutExpired:

@@ -36,27 +36,33 @@ class NiktoScanner:
             "-h", target_host,
             "-o", str(xml_path),
             "-Format", "xml",
+            "-maxtime", "600s",  # Limit scan to 10 minutes per host
         ]
 
-        self.logger.info(f"  Running: nikto -h {target_host}")
+        self.logger.info(f"  Running: nikto -h {target_host} -maxtime 600s")
 
         try:
             result = subprocess.run(
                 cmd,
                 capture_output=True,
                 text=True,
-                timeout=900,  # 15 minutes — Nikto can be slow
+                timeout=900,  # 15 min subprocess timeout (buffer above maxtime)
             )
 
-            # Save stderr
             err_path = self.output_dir / "nikto_stderr.txt"
             with open(err_path, "w") as f:
                 f.write(result.stderr)
 
-            # Nikto often exits with code 0 even with findings
-            self.logger.info(f"  [✓] Nikto scan completed (exit code: {result.returncode})")
-            self.logger.info(f"      XML: {xml_path}")
-            return True
+            if xml_path.exists() and xml_path.stat().st_size > 0:
+                self.logger.info(f"  [✓] Nikto scan completed (exit code: {result.returncode})")
+                self.logger.info(f"      XML: {xml_path}")
+                return True
+            else:
+                self.logger.warning(f"  [!] Nikto produced no XML output (exit code: {result.returncode})")
+                stderr_out = result.stderr.strip()
+                if stderr_out:
+                    self.logger.warning(f"      stderr: {stderr_out[:300]}")
+                return False
 
         except subprocess.TimeoutExpired:
             self.logger.error("  [!] Nikto scan timed out after 15 minutes")
